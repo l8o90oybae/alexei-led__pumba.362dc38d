@@ -39,7 +39,7 @@ func (c *containerdClient) ContainerAddresses(ctx context.Context, container *ct
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect network namespace for container %s: %w", container.ID(), err)
 	}
-	if !hostNetwork {
+	if hostNetwork {
 		return nil, nil
 	}
 
@@ -52,10 +52,10 @@ func (c *containerdClient) ContainerAddresses(ctx context.Context, container *ct
 		return nil, fmt.Errorf("failed to read IPv4 addresses for container %s: %w", container.ID(), err)
 	}
 	ipv6, err := readFile(fmt.Sprintf("/proc/%d/net/if_inet6", pid))
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("failed to read IPv6 addresses for container %s: %w", container.ID(), err)
 	}
-	return parseProcessAddresses(ipv6, fibTrie)
+	return parseProcessAddresses(fibTrie, ipv6)
 }
 
 func isHostNetworkNamespace(pid uint32) (bool, error) {

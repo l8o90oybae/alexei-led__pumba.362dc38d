@@ -86,7 +86,7 @@ func (s *stressCommand) stressContainer(ctx context.Context, c *container.Contai
 		Stressors:    s.stressors,
 		Duration:     s.duration,
 		Sidecar:      container.SidecarSpec{Image: s.image, Pull: s.pull},
-		InjectCgroup: false,
+		InjectCgroup: s.injectCgroup,
 		DryRun:       s.dryRun,
 	}
 	result, err := s.client.StressContainer(ctx, req)
@@ -106,9 +106,9 @@ func (s *stressCommand) stressContainer(ctx context.Context, c *container.Contai
 	case <-ctx.Done():
 		log.Debug("stop stress test on containers by stop event")
 		// cleanup must run even when parent ctx is canceled; preserve values but strip cancellation
-		cleanupCtx, cleanupCancel := context.WithTimeout(ctx, defaultStopTimeout)
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), defaultStopTimeout)
 		defer cleanupCancel()
-		err = s.client.StopContainerWithID(cleanupCtx, c.ID(), defaultStopTimeout, s.dryRun)
+		err = s.client.StopContainerWithID(cleanupCtx, result.SidecarID, defaultStopTimeout, s.dryRun)
 		if err != nil {
 			return fmt.Errorf("failed to stop stress-ng container: %w", err)
 		}
@@ -117,7 +117,7 @@ func (s *stressCommand) stressContainer(ctx context.Context, c *container.Contai
 		// parent ctx may cancel simultaneously with the timer; strip cancellation for cleanup
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), defaultStopTimeout)
 		defer cleanupCancel()
-		err = s.client.StopContainerWithID(cleanupCtx, c.ID(), defaultStopTimeout, s.dryRun)
+		err = s.client.StopContainerWithID(cleanupCtx, result.SidecarID, defaultStopTimeout, s.dryRun)
 		if err != nil {
 			return fmt.Errorf("failed to stop stress-ng container: %w", err)
 		}

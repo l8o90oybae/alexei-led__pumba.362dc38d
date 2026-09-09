@@ -92,9 +92,9 @@ func (client dockerClient) stressContainerCommand(ctx context.Context, targetID 
 		return "", nil, nil, err
 	}
 
-	config, hconfig := stressContainerConfig(targetID, stressors, img, driver, cgroupPath, cgroupParent, injectCgroup)
+	config, hconfig := stressContainerConfig(targetID, stressors, img, driver, cgroupParent, cgroupPath, injectCgroup)
 	if pull {
-		if err := client.pullImage(ctx, img); err != nil {
+		if err := client.pullImage(ctx, config.Image); err != nil {
 			return "", nil, nil, err
 		}
 	}
@@ -140,7 +140,7 @@ func (client dockerClient) stressContainerCommand(ctx context.Context, targetID 
 			return
 		}
 		// get status of stress-ng command
-		if inspect.State.ExitCode > 0 {
+		if inspect.State.ExitCode != 0 {
 			outerr <- fmt.Errorf("stress-ng exited with error: %v", stdout.String())
 			return
 		}
@@ -150,6 +150,11 @@ func (client dockerClient) stressContainerCommand(ctx context.Context, targetID 
 	log.WithField("id", createResponse.ID).Debug("stress-ng container created, starting it")
 	err = client.containerAPI.ContainerStart(ctx, createResponse.ID, ctypes.StartOptions{})
 	if err != nil {
+		// AutoRemove fires only on container exit; a never-started container
+		// is leaked unless we remove it explicitly.
+		if rmErr := client.removeSidecar(ctx, createResponse.ID); rmErr != nil {
+			log.WithError(rmErr).WithField("id", createResponse.ID).Warn("failed to remove never-started stress-ng sidecar")
+		}
 		return createResponse.ID, output, outerr, fmt.Errorf("failed to start stress-ng container: %w", err)
 	}
 	return createResponse.ID, output, outerr, nil

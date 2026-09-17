@@ -96,11 +96,12 @@ func NewClient(explicitSocket string) (ctr.Client, error) {
 
 	api, err := newAPIClient(uri, nil)
 	if err != nil {
-		return nil, fmt.Errorf("podman runtime: create api client for %s: %v", uri, err)
+		return nil, fmt.Errorf("podman runtime: create api client for %s: %w", uri, err)
 	}
 
 	delegate, err := newDelegate(api)
 	if err != nil {
+		_ = api.Close()
 		return nil, fmt.Errorf("podman runtime: wrap docker delegate: %w", err)
 	}
 
@@ -108,6 +109,7 @@ func NewClient(explicitSocket string) (ctr.Client, error) {
 	defer cancel()
 	info, err := fetchInfo(ctx, api)
 	if err != nil {
+		_ = api.Close()
 		return nil, fmt.Errorf("podman runtime: query /info on %s: %w", uri, err)
 	}
 
@@ -117,7 +119,7 @@ func NewClient(explicitSocket string) (ctr.Client, error) {
 	return &podmanClient{
 		Client:    delegate,
 		api:       api,
-		rootless:  !rootless,
+		rootless:  rootless,
 		socketURI: uri,
 	}, nil
 }

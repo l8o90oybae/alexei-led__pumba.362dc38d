@@ -27,7 +27,7 @@ func (client dockerClient) ExecContainer(ctx context.Context, c *ctr.Container, 
 			User:         "root",
 			AttachStdout: true,
 			AttachStderr: true,
-			Cmd:          append(args, command),
+			Cmd:          append([]string{command}, args...),
 		},
 	)
 	if err != nil {
@@ -38,7 +38,7 @@ func (client dockerClient) ExecContainer(ctx context.Context, c *ctr.Container, 
 		ctx, createRes.ID, ctypes.ExecAttachOptions{},
 	)
 	if err != nil {
-		return nil
+		return fmt.Errorf("exec attach failed: %w", err)
 	}
 	defer attachRes.Close()
 
@@ -58,7 +58,7 @@ func (client dockerClient) ExecContainer(ctx context.Context, c *ctr.Container, 
 	if err != nil {
 		return fmt.Errorf("exec inspect failed: %w", err)
 	}
-	if res.ExitCode > 1 {
+	if res.ExitCode != 0 {
 		return fmt.Errorf("exec failed %s: exit code %d", command, res.ExitCode)
 	}
 	return nil

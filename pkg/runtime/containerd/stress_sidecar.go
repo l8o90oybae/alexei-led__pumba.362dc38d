@@ -66,6 +66,9 @@ func (c *containerdClient) createStressSidecar(
 		return "", nil, nil, nil, fmt.Errorf("failed to get target task for stress sidecar: %w", err)
 	}
 	targetPID := targetTask.Pid()
+	if targetPID == 0 {
+		return "", nil, nil, nil, fmt.Errorf("target task for %s has PID 0 (not running)", target.ID())
+	}
 
 	cgroupPath, cgroupParent, err := resolveCgroupPath(targetPID)
 	if err != nil {
@@ -91,7 +94,7 @@ func (c *containerdClient) createStressSidecar(
 	}
 
 	sidecarID := fmt.Sprintf("pumba-stress-%d", execCounter.Add(1))
-	specOpts := buildStressSpecOpts(image, stressors, cgroupParent, cgroupPath, sidecarID, injectCgroup)
+	specOpts := buildStressSpecOpts(image, stressors, cgroupPath, cgroupParent, sidecarID, injectCgroup)
 
 	sidecarContainer, err := c.client.NewContainer(ctx, sidecarID,
 		containerd.WithImage(image),
@@ -105,6 +108,9 @@ func (c *containerdClient) createStressSidecar(
 
 	task, waitCh, err := c.startSidecarTask(ctx, sidecarContainer)
 	if err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sidecarCleanupTimeout)
+		c.deleteContainer(c.nsCtx(cleanupCtx), sidecarContainer)
+		cancel()
 		return "", nil, nil, nil, err
 	}
 

